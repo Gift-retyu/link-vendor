@@ -63,10 +63,14 @@ let UserResolver = class UserResolver {
     links({ em }) {
         return em.find(Link_1.Link, {});
     }
-    link(id, { em }) {
-        return em.findOne(Link_1.Link, { id });
+    async me({ em, req }) {
+        if (!req.session.userId) {
+            return null;
+        }
+        const user = await em.findOne(User_1.User, { id: req.session.userId });
+        return user;
     }
-    async register(Options, { em }) {
+    async register(Options, { em, req }) {
         if (Options.username.length < 3) {
             return {
                 errors: [
@@ -107,11 +111,12 @@ let UserResolver = class UserResolver {
                 };
             }
         }
+        req.session.userId = user.id;
         return {
             user,
         };
     }
-    async login(Options, { em }) {
+    async login(Options, { em, req }) {
         const user = await em.findOne(User_1.User, { username: Options.username });
         if (!user) {
             return {
@@ -134,6 +139,7 @@ let UserResolver = class UserResolver {
                 ],
             };
         }
+        req.session.userId = user.id;
         return {
             user,
         };
@@ -147,13 +153,12 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UserResolver.prototype, "links", null);
 __decorate([
-    (0, type_graphql_1.Query)(() => Link_1.Link, { nullable: true }),
-    __param(0, (0, type_graphql_1.Arg)('identifier', () => type_graphql_1.Int)),
-    __param(1, (0, type_graphql_1.Ctx)()),
+    (0, type_graphql_1.Query)(() => User_1.User, { nullable: true }),
+    __param(0, (0, type_graphql_1.Ctx)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
-], UserResolver.prototype, "link", null);
+], UserResolver.prototype, "me", null);
 __decorate([
     (0, type_graphql_1.Mutation)(() => UserResponse),
     __param(0, (0, type_graphql_1.Arg)('options')),

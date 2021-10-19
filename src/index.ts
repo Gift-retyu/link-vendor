@@ -12,16 +12,34 @@ import connectRedis from 'connect-redis'
 import redis from 'redis'
 import session from 'express-session'
 import { MyContext } from './types'
+import cors from 'cors'
 
+
+
+declare module "express-session" {
+  interface Session {
+    userId: number;
+  }
+}
 const main = async () => {
   const orm = await MikroORM.init(microConfig)
   await orm.getMigrator().up()
+
+
+  console.log(__prod__);
 
   const app = express()
 
   const RedisStore = connectRedis(session)
   const redisClient = redis.createClient()
 
+
+  app.set("trust proxy", 1);
+  app.use(cors({
+    credentials:true,
+    origin:'http://127.0.0.1:3006',
+
+  }))
   app.use(
     session({
       name: 'qid',
@@ -30,7 +48,7 @@ const main = async () => {
         disableTouch: true,
       }),
       cookie:{
-       maxAge: 1000 * 60  * 60 * 24 * 365 ,// year
+       maxAge: 1000 * 60  * 60 * 24 * 365 , // year
        httpOnly : true,
        sameSite: 'lax',
        secure : __prod__ // cookie only works in https
@@ -38,19 +56,22 @@ const main = async () => {
       saveUninitialized: false,
       secret: '43grvfwjkemfpo2i3gf',
       resave: false,
+  
     }),
   )
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
       resolvers: [LinkResolver, UserResolver],
+    
       validate: false,
+     
     }),
     context: ({req, res}) : MyContext => ({ em: orm.em, req, res }),
   })
 
   await apolloServer.start()
 
-  apolloServer.applyMiddleware({ app })
+  apolloServer.applyMiddleware({ app, cors:false})
 
   app.listen(4000, () => {
     console.log('server started on localhost:4000')

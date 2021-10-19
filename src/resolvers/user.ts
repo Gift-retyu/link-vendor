@@ -4,7 +4,6 @@ import {
   Query,
   Ctx,
   Arg,
-  Int,
   Mutation,
   InputType,
   Field,
@@ -13,6 +12,7 @@ import {
 import argon2 from 'argon2';
 import { MyContext } from 'src/types';
 import { User } from '../entities/User';
+
 
 @ObjectType()
 class FieldError {
@@ -48,18 +48,24 @@ export class UserResolver {
     return em.find(Link, {});
   }
 
-  @Query(() => Link, { nullable: true })
-  link(
-    @Arg('identifier', () => Int) id: number,
-    @Ctx() { em }: MyContext
-  ): Promise<Link | null> {
-    return em.findOne(Link, { id });
+  @Query(() => User, { nullable: true })
+  async me(
+    @Ctx() { em,req }: MyContext
+  ){
+    
+    if(!req.session.userId){
+
+        return null
+    }
+
+    const user = await em.findOne(User,{id:req.session.userId})
+    return user
   }
 
   @Mutation(() => UserResponse)
   async register(
     @Arg('options') Options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em , req}: MyContext
   ): Promise<UserResponse> {
     if (Options.username.length < 3) {
       return {
@@ -102,6 +108,7 @@ export class UserResolver {
       }
     }
 
+    req.session!.userId = user.id;
     return {
       user,
     };
@@ -110,7 +117,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async login(
     @Arg('options') Options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em , req}: MyContext
   ): Promise<UserResponse> {
     const user = await em.findOne(User, { username: Options.username });
 
@@ -137,6 +144,9 @@ export class UserResolver {
         ],
       };
     }
+
+    req.session!.userId = user.id;
+
     return {
       user,
     };
